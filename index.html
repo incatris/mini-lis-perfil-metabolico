@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mini-LIS | Perfil metabólico PRE/POST · Google Sheets</title>
+<style>
+  :root{
+    --bg:#f4f6f8; --card:#ffffff; --text:#17202a; --muted:#667085;
+    --line:#d9dee7; --primary:#17324d; --accent:#2f6f8f; --ok:#176b3a;
+    --warn:#9a6700; --danger:#a61b1b; --soft:#eef4f8;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text)}
+  header{background:var(--primary);color:white;padding:22px 24px}
+  header h1{margin:0 0 4px;font-size:24px}
+  header p{margin:0;opacity:.88}
+  main{max-width:1200px;margin:22px auto;padding:0 18px 40px}
+  .notice{background:#fff8df;border:1px solid #ecd27c;padding:12px 14px;border-radius:10px;margin-bottom:16px;font-size:14px}
+  .cloudbar{background:#eef8f1;border:1px solid #b9dcc5;padding:10px 14px;border-radius:10px;margin-bottom:16px;font-size:13px;display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}
+  .cloud-ok{color:#176b3a;font-weight:700}
+  .cloud-warn{color:#9a6700;font-weight:700}
+  .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.03)}
+  .span-4{grid-column:span 4}.span-8{grid-column:span 8}.span-12{grid-column:span 12}
+  h2{font-size:18px;margin:0 0 14px} h3{font-size:16px;margin:0 0 10px}
+  label{display:block;font-size:13px;font-weight:600;margin:10px 0 5px}
+  input,select{width:100%;padding:10px 11px;border:1px solid #c9d0da;border-radius:8px;font-size:14px;background:white}
+  button{border:0;border-radius:8px;padding:10px 13px;font-weight:700;cursor:pointer;background:var(--primary);color:white}
+  button.secondary{background:#e9eef3;color:#17324d}
+  button.ok{background:var(--ok)} button.warn{background:var(--warn)} button.danger{background:var(--danger)}
+  button.small{padding:7px 9px;font-size:12px}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .metric{background:var(--soft);padding:10px 12px;border-radius:9px;font-size:13px}
+  .metric strong{display:block;font-size:20px;margin-top:2px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{padding:9px 8px;border-bottom:1px solid #e5e9ef;text-align:left;vertical-align:top}
+  th{background:#f8fafc;position:sticky;top:0;z-index:1}
+  .table-wrap{overflow:auto;max-height:410px;border:1px solid #e4e8ee;border-radius:9px}
+  .badge{display:inline-block;padding:3px 7px;border-radius:999px;background:#e8eef4;font-size:11px;font-weight:700}
+  .pre{background:#e5f1ff}.post{background:#fcefdc}
+  .muted{color:var(--muted);font-size:12px}
+  .section-title{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:10px}
+  .hidden{display:none!important}
+  .result-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  .result-grid .field{min-width:0}
+  footer{font-size:12px;color:var(--muted);margin-top:16px}
+  @media(max-width:900px){
+    .span-4,.span-8,.span-12{grid-column:span 12}
+    .result-grid{grid-template-columns:repeat(2,1fr)}
+  }
+  @media(max-width:520px){.result-grid{grid-template-columns:1fr}}
+  @media print{
+    body *{visibility:hidden}
+    #printArea,#printArea *{visibility:visible}
+    #printArea{position:absolute;left:0;top:0;width:100%}
+    .label-sheet{display:grid!important;grid-template-columns:repeat(2,1fr);gap:10mm;padding:10mm}
+    .lab-label{border:1px solid #000;padding:6mm;height:40mm;font-size:12pt}
+    .lab-label .sid{font-size:19pt;font-weight:800;margin:3mm 0}
+  }
+  .label-sheet{display:none}
+</style>
+</head>
+<body>
+<header>
+  <h1>Mini-LIS · Perfil metabólico PRE/POST Fiestas Patrias</h1>
+  <p>Registro de paciente, trazabilidad de muestra, alicuotado e ingreso posterior de resultados.</p>
+</header>
+
+<main>
+  <div class="notice">
+    <strong>Memoria local:</strong> los datos quedan guardados en este navegador/computador. Use “Descargar respaldo” al finalizar cada sesión.
+    Si el archivo se abre en otro computador, use “Importar respaldo”.
+  </div>
+
+  <div class="cloudbar">
+    <div><strong>Planilla central:</strong> activada. Cada muestra, cambio de estado y resultado se envía automáticamente a Google Sheets.</div>
+    <div id="cloudStatus" class="cloud-ok">Listo para enviar</div>
+  </div>
+
+  <div class="grid">
+    <section class="card span-4">
+      <h2>1. Registrar paciente</h2>
+      <label>Nombre completo</label>
+      <input id="pName" autocomplete="off" placeholder="Ej.: Ana Pérez Soto">
+      <label>RUT</label>
+      <input id="pRut" autocomplete="off" placeholder="12.345.678-5">
+      <label>Sección / grupo <span class="muted">(opcional)</span></label>
+      <input id="pSection" autocomplete="off" placeholder="Ej.: Sección 1">
+      <div class="actions">
+        <button onclick="registerPatient()">Registrar paciente</button>
+      </div>
+      <p class="muted">El sistema asigna automáticamente un ID permanente y único, por ejemplo: FP26-K7M2Q8RX. El mismo ID vincula las muestras PRE y POST.</p>
+    </section>
+
+    <section class="card span-8">
+      <div class="section-title">
+        <h2>2. Registrar muestra</h2>
+        <div class="row">
+          <span class="metric">Pacientes<strong id="countPatients">0</strong></span>
+          <span class="metric">Muestras<strong id="countSamples">0</strong></span>
+        </div>
+      </div>
+
+      <label>Paciente</label>
+      <select id="samplePatient"></select>
+
+      <div class="grid" style="margin-top:2px">
+        <div class="span-4">
+          <label>Momento</label>
+          <select id="sampleMoment">
+            <option value="PRE">PRE Fiestas Patrias</option>
+            <option value="POST">POST Fiestas Patrias</option>
+          </select>
+        </div>
+        <div class="span-4">
+          <label>Tipo de muestra</label>
+          <select id="sampleType">
+            <option value="Suero">Suero</option>
+            <option value="Plasma">Plasma</option>
+            <option value="Plasma con fluoruro">Plasma con fluoruro</option>
+          </select>
+        </div>
+        <div class="span-4">
+          <label>Estado inicial</label>
+          <select id="sampleStatus">
+            <option selected>Registrada</option>
+            <option>Muestra obtenida</option>
+            <option>Centrifugada</option>
+            <option>Suero/plasma separado</option>
+            <option>Alicuotada</option>
+            <option>En procesamiento</option>
+            <option>Procesada</option>
+            <option>Validada</option>
+          </select>
+        </div>
+        <div class="span-4">
+          <label>Condición de ayuno</label>
+          <select id="sampleFasting">
+            <option value="No informado" selected>No informado</option>
+            <option value="Sí">Sí</option>
+            <option value="No">No</option>
+          </select>
+        </div>
+        <div class="span-4">
+          <label>Horas de ayuno <span class="muted">(opcional)</span></label>
+          <input id="sampleFastingHours" type="number" min="0" max="24" step="0.5" placeholder="Ej.: 10">
+        </div>
+      </div>
+      <div class="actions">
+        <button onclick="createSample()">Generar muestra</button>
+        <button class="secondary" onclick="showLabelsForLast()">Etiquetas última muestra</button>
+      </div>
+      <p class="muted">Formato de ID de muestra: FP26-K7M2Q8RX-PRE o FP26-K7M2Q8RX-POST. Se permite una muestra PRE y una POST por paciente. Registre la matriz realmente utilizada y la condición de ayuno cuando esté disponible.</p>
+    </section>
+
+    <section class="card span-12">
+      <div class="section-title">
+        <h2>3. Trazabilidad</h2>
+        <input id="searchBox" oninput="renderTables()" placeholder="Buscar por nombre, RUT, ID paciente o ID muestra" style="max-width:430px">
+      </div>
+      <p class="muted">El estado solo puede avanzar a la etapa siguiente. Cada cambio queda registrado con fecha y hora.</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>ID muestra</th><th>Momento</th><th>ID paciente</th><th>Nombre</th><th>RUT</th>
+              <th>Fecha/hora</th><th>Estado</th><th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="sampleTable"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card span-12">
+      <h2>4. Ingreso posterior de resultados</h2>
+      <div class="grid">
+        <div class="span-4">
+          <label>Seleccione muestra</label>
+          <select id="resultSample" onchange="loadResultsForm()"></select>
+        </div>
+        <div class="span-8">
+          <label>Estado analítico</label>
+          <select id="resultStatus"></select>
+        </div>
+      </div>
+
+      <div class="result-grid">
+        <div class="field"><label>Glucosa (mg/dL)</label><input id="rGlu" type="number" step="0.1" min="0"></div>
+        <div class="field"><label>Colesterol total (mg/dL)</label><input id="rCt" type="number" step="0.1" min="0" oninput="updateLDLPreview()"></div>
+        <div class="field"><label>Triglicéridos (mg/dL)</label><input id="rTg" type="number" step="0.1" min="0" oninput="updateLDLPreview()"></div>
+        <div class="field"><label>Colesterol HDL (mg/dL)</label><input id="rHdl" type="number" step="0.1" min="0" oninput="updateLDLPreview()"></div>
+        <div class="field"><label>Colesterol LDL calculado (mg/dL)</label><input id="rLdl" type="text" readonly placeholder="Se calcula automáticamente"></div>
+      </div>
+      <p id="ldlNote" class="muted" style="margin-top:10px">Friedewald: LDL = Colesterol total − HDL − (Triglicéridos/5), en mg/dL.</p>
+      <div class="actions">
+        <button class="ok" onclick="saveResults()">Guardar resultados</button>
+        <button class="secondary" onclick="advanceSelectedSample()">Avanzar estado</button>
+        <button class="secondary" onclick="clearResultFields()">Limpiar campos</button>
+      </div>
+      <p class="muted">El estado avanza una etapa a la vez. “Validada” corresponde al ingreso, revisión e informe final de los resultados.</p>
+    </section>
+
+    <section class="card span-12">
+      <h2>5. Respaldo y sincronización</h2>
+      <div class="actions">
+        <button onclick="downloadJSON()">Descargar mi respaldo</button>
+        <button class="secondary" onclick="document.getElementById('importFile').click()">Recuperar mi respaldo</button>
+        <input id="importFile" type="file" accept=".json,application/json" class="hidden" onchange="importJSON(event)">
+        <button class="secondary" onclick="syncAllToCloud()">Reenviar mis datos a planilla</button>
+      </div>
+      <p class="muted">Los datos se envían automáticamente a la planilla central. El respaldo corresponde solo a sus datos locales y permite recuperarlos si cambia de equipo o navegador.</p>
+    </section>
+  </div>
+
+  <footer>
+    Mini-LIS estudiante v6 · seguimiento individual y sincronización Google Sheets. Los datos personales se almacenan únicamente en el navegador local donde se ejecute este archivo.
+  </footer>
+</main>
+
+<div id="printArea">
+  <div id="labelSheet" class="label-sheet"></div>
+</div>
+
+<script>
+const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwHcaMHqW4TmjzJdd7UNNKw-0bXv7P7BxVHTZ9YZUOqgvK6G8W_pspX7xfoxlvXUA9a/exec";
+const STORAGE_KEY = "miniLIS_perfil_metabolico_fiestas_2026_v1";
+
+function setCloudStatus(text, ok=true){
+  const el=document.getElementById("cloudStatus");
+  if(!el) return;
+  el.textContent=text;
+  el.className=ok ? "cloud-ok" : "cloud-warn";
+}
+
+function cloudPayloadForSample(sample){
+  const p=patientById(sample.patientId) || {};
+  const r=sample.results || {};
+  return {
+    patientId: sample.patientId || "",
+    name: p.name || "",
+    rut: p.rut || "",
+    section: p.section || "",
+    sampleId: sample.id || "",
+    moment: sample.moment || "",
+    sampleType: sample.type || "",
+    fasting: sample.fasting || "",
+    fastingHours: sample.fastingHours ?? "",
+    status: sample.status || "",
+    collectedAt: sample.collectedAt || "",
+    glucose: r.glucose ?? "",
+    totalChol: r.totalChol ?? "",
+    triglycerides: r.triglycerides ?? "",
+    hdl: r.hdl ?? "",
+    ldl: r.ldl ?? ""
+  };
+}
+
+async function syncSampleToCloud(sampleId){
+  const s=sampleById(sampleId);
+  if(!s) return false;
+  setCloudStatus(`Enviando ${sampleId}…`, true);
+  try{
+    await fetch(WEBAPP_URL, {
+      method:"POST",
+      mode:"no-cors",
+      headers:{"Content-Type":"text/plain;charset=utf-8"},
+      body:JSON.stringify(cloudPayloadForSample(s))
+    });
+    s.cloudSentAt=new Date().toISOString();
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
+    setCloudStatus(`Envío realizado · ${new Date().toLocaleTimeString("es-CL",{hour:"2-digit",minute:"2-digit"})}`, true);
+    return true;
+  }catch(error){
+    console.error("Error de envío a planilla:", error);
+    setCloudStatus("No se pudo enviar · queda guardado localmente", false);
+    return false;
+  }
+}
+
+async function syncAllToCloud(){
+  if(!db.samples.length){
+    alert("No hay muestras locales para enviar.");
+    return;
+  }
+  setCloudStatus("Reenviando datos…", true);
+  for(const s of db.samples){
+    await syncSampleToCloud(s.id);
+  }
+  alert("Se solicitó el reenvío de todas las muestras locales a la planilla central.");
+}
+let db = loadDB();
+let lastSampleId = null;
+
+function blankDB(){
+  return {version:1, patients:[], samples:[], nextPatient:1};
+}
+
+function loadDB(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return blankDB();
+    const parsed = JSON.parse(raw);
+    parsed.patients = parsed.patients || [];
+    parsed.samples = parsed.samples || [];
+    parsed.samples.forEach(s=>{
+      s.results = s.results || {glucose:"", totalChol:"", triglycerides:"", hdl:"", ldl:""};
+      if(!("ldl" in s.results)) s.results.ldl = "";
+      s.statusHistory = s.statusHistory || [{status:s.status || "Registrada", at:s.collectedAt || new Date().toISOString()}];
+      if(!("fasting" in s)) s.fasting = "No informado";
+      if(!("fastingHours" in s)) s.fastingHours = "";
+      if(!("cloudSentAt" in s)) s.cloudSentAt = null;
+    });
+    parsed.nextPatient = parsed.nextPatient || (parsed.patients.length + 1);
+    return parsed;
+  }catch(e){
+    alert("No fue posible leer la base local. Se iniciará una base vacía.");
+    return blankDB();
+  }
+}
+
+function saveDB(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
+  refreshUI();
+}
+
+function escapeHtml(s){
+  return String(s ?? "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function normalizeRut(rut){
+  return rut.toUpperCase().replace(/\./g,"").replace(/-/g,"").replace(/\s/g,"");
+}
+function validRut(rut){
+  let r = normalizeRut(rut);
+  if(r.length < 2) return false;
+  const dv = r.slice(-1), num = r.slice(0,-1);
+  if(!/^\d+$/.test(num) || !/^[0-9K]$/.test(dv)) return false;
+  let sum=0, mul=2;
+  for(let i=num.length-1;i>=0;i--){ sum += Number(num[i])*mul; mul = mul===7 ? 2 : mul+1; }
+  const res = 11-(sum%11);
+  const calc = res===11 ? "0" : res===10 ? "K" : String(res);
+  return calc===dv;
+}
+function formatRut(rut){
+  let r=normalizeRut(rut);
+  if(r.length<2) return rut;
+  const dv=r.slice(-1); let n=r.slice(0,-1);
+  n=n.replace(/\B(?=(\d{3})+(?!\d))/g,".");
+  return `${n}-${dv}`;
+}
+
+function newPatientId(){
+  const alphabet="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let code="";
+  if(window.crypto && crypto.getRandomValues){
+    const bytes=new Uint32Array(8);
+    crypto.getRandomValues(bytes);
+    for(let i=0;i<8;i++) code += alphabet[bytes[i] % alphabet.length];
+  }else{
+    for(let i=0;i<8;i++) code += alphabet[Math.floor(Math.random()*alphabet.length)];
+  }
+  const id=`FP26-${code}`;
+  if(db.patients.some(p=>p.id===id)) return newPatientId();
+  return id;
+}
+
+function registerPatient(){
+  const name = document.getElementById("pName").value.trim().replace(/\s+/g," ");
+  const rutInput = document.getElementById("pRut").value.trim();
+  const section = document.getElementById("pSection").value.trim();
+
+  if(!name){ alert("Ingrese el nombre completo."); return; }
+  if(!validRut(rutInput)){ alert("El RUT ingresado no es válido."); return; }
+
+  const rutNorm = normalizeRut(rutInput);
+  const existing = db.patients.find(p => normalizeRut(p.rut)===rutNorm);
+  if(existing){
+    alert(`Este RUT ya está registrado como ${existing.id} (${existing.name}).`);
+    return;
+  }
+
+  const patient = {
+    id:newPatientId(),
+    name,
+    rut:formatRut(rutInput),
+    section,
+    createdAt:new Date().toISOString()
+  };
+  db.patients.push(patient);
+  db.nextPatient++;
+  saveDB();
+
+  document.getElementById("pName").value="";
+  document.getElementById("pRut").value="";
+  document.getElementById("pSection").value="";
+  document.getElementById("samplePatient").value = patient.id;
+  alert(`Paciente registrado: ${patient.id}`);
+}
+
+function createSample(){
+  const patientId=document.getElementById("samplePatient").value;
+  const moment=document.getElementById("sampleMoment").value;
+  const type=document.getElementById("sampleType").value;
+  const status=document.getElementById("sampleStatus").value;
+  const fasting=document.getElementById("sampleFasting").value;
+  const fastingHoursRaw=document.getElementById("sampleFastingHours").value;
+  const fastingHours=fastingHoursRaw==="" ? "" : Number(fastingHoursRaw);
+  if(!patientId){ alert("Primero registre o seleccione un paciente."); return; }
+
+  const id=`${patientId}-${moment}`;
+  if(db.samples.some(s=>s.id===id)){
+    alert(`Ya existe la muestra ${id}.`);
+    return;
+  }
+
+  const sample={
+    id, patientId, moment, type, status, fasting, fastingHours,
+    collectedAt:new Date().toISOString(),
+    statusHistory:[{status, at:new Date().toISOString()}],
+    results:{glucose:"", totalChol:"", triglycerides:"", hdl:"", ldl:""},
+    resultsUpdatedAt:null
+  };
+  db.samples.push(sample);
+  lastSampleId=id;
+  saveDB();
+  document.getElementById("resultSample").value=id;
+  loadResultsForm();
+  renderLabels(id);
+  syncSampleToCloud(id);
+  alert(`Muestra creada: ${id}`);
+}
+
+function patientById(id){ return db.patients.find(p=>p.id===id); }
+function sampleById(id){ return db.samples.find(s=>s.id===id); }
+
+function refreshUI(){
+  document.getElementById("countPatients").textContent=db.patients.length;
+  document.getElementById("countSamples").textContent=db.samples.length;
+
+  const patientSelect=document.getElementById("samplePatient");
+  const currentPatient=patientSelect.value;
+  patientSelect.innerHTML = db.patients.length
+    ? db.patients.map(p=>`<option value="${escapeHtml(p.id)}">${escapeHtml(p.id)} · ${escapeHtml(p.name)} · ${escapeHtml(p.rut)}</option>`).join("")
+    : `<option value="">— Sin pacientes registrados —</option>`;
+  if(db.patients.some(p=>p.id===currentPatient)) patientSelect.value=currentPatient;
+
+  const resultSelect=document.getElementById("resultSample");
+  const currentSample=resultSelect.value;
+  resultSelect.innerHTML = db.samples.length
+    ? db.samples.map(s=>{
+        const p=patientById(s.patientId);
+        return `<option value="${escapeHtml(s.id)}">${escapeHtml(s.id)} · ${escapeHtml(p?.name||"")}</option>`;
+      }).join("")
+    : `<option value="">— Sin muestras registradas —</option>`;
+  if(db.samples.some(s=>s.id===currentSample)) resultSelect.value=currentSample;
+
+  renderTables();
+  if(resultSelect.value) loadResultsForm();
+  else clearResultFields();
+}
+
+function displayDate(iso){
+  if(!iso) return "";
+  return new Date(iso).toLocaleString("es-CL");
+}
+
+const STATUS_FLOW = [
+  "Registrada",
+  "Muestra obtenida",
+  "Centrifugada",
+  "Suero/plasma separado",
+  "Alicuotada",
+  "En procesamiento",
+  "Procesada",
+  "Validada"
+];
+
+function statusOptions(current){
+  const idx=STATUS_FLOW.indexOf(current);
+  if(idx<0) return `<option selected>${escapeHtml(current)}</option>`;
+  const allowed=[current];
+  if(idx<STATUS_FLOW.length-1) allowed.push(STATUS_FLOW[idx+1]);
+  return allowed.map(st=>`<option ${st===current?"selected":""}>${escapeHtml(st)}</option>`).join("");
+}
+
+function resultsComplete(s){
+  const r=s?.results||{};
+  return [r.glucose,r.totalChol,r.triglycerides,r.hdl].every(v=>v!=="" && v!==null && v!==undefined && Number.isFinite(Number(v)));
+}
+
+function changeSampleStatus(id, newStatus){
+  const s=sampleById(id);
+  if(!s) return;
+  if(s.status===newStatus) return;
+
+  const currentIdx=STATUS_FLOW.indexOf(s.status);
+  const newIdx=STATUS_FLOW.indexOf(newStatus);
+
+  if(newIdx!==currentIdx+1){
+    alert("Los estados deben avanzar en orden, una etapa a la vez.");
+    renderTables();
+    return;
+  }
+
+  if(newStatus==="Validada" && !resultsComplete(s)){
+    alert("Para validar la muestra primero debe ingresar y guardar glucosa, colesterol total, triglicéridos y colesterol HDL.");
+    renderTables();
+    return;
+  }
+
+  s.status=newStatus;
+  s.statusHistory=s.statusHistory||[];
+  s.statusHistory.push({status:newStatus, at:new Date().toISOString()});
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
+
+  if(document.getElementById("resultSample").value===id){
+    document.getElementById("resultStatus").value=newStatus;
+  }
+
+  syncSampleToCloud(id);
+  renderTables();
+}
+
+function showStatusHistory(id){
+  const s=sampleById(id);
+  if(!s) return;
+  const hist=(s.statusHistory||[]).map(h=>`${displayDate(h.at)} · ${h.status}`).join("\n");
+  alert(`Historial de ${id}\n\n${hist || "Sin historial disponible."}`);
+}
+
+function renderTables(){
+  const q=(document.getElementById("searchBox")?.value||"").toLowerCase().trim();
+  const rows=db.samples
+    .slice().sort((a,b)=>a.id.localeCompare(b.id))
+    .filter(s=>{
+      const p=patientById(s.patientId)||{};
+      const hay=[s.id,s.patientId,p.name,p.rut,p.section,s.status,s.moment].join(" ").toLowerCase();
+      return !q || hay.includes(q);
+    }).map(s=>{
+      const p=patientById(s.patientId)||{};
+      return `<tr>
+        <td><strong>${escapeHtml(s.id)}</strong></td>
+        <td><span class="badge ${s.moment==="PRE"?"pre":"post"}">${escapeHtml(s.moment)}</span></td>
+        <td>${escapeHtml(s.patientId)}</td>
+        <td>${escapeHtml(p.name||"")}${p.section?`<div class="muted">${escapeHtml(p.section)}</div>`:""}</td>
+        <td>${escapeHtml(p.rut||"")}</td>
+        <td>${escapeHtml(displayDate(s.collectedAt))}<div class="muted">Ayuno: ${escapeHtml(s.fasting||"No informado")}${s.fastingHours!=="" && s.fastingHours!=null ? ` · ${escapeHtml(s.fastingHours)} h` : ""}</div></td>
+        <td>
+          <select aria-label="Estado de ${escapeHtml(s.id)}" onchange="changeSampleStatus('${s.id}', this.value)" style="min-width:165px;padding:6px 7px">
+            ${statusOptions(s.status)}
+          </select>
+        </td>
+        <td>
+          <div class="row">
+            <button class="small secondary" onclick="selectForResults('${s.id}')">Resultados</button>
+            <button class="small secondary" onclick="showStatusHistory('${s.id}')">Historial</button>
+            <button class="small secondary" onclick="renderLabels('${s.id}',true)">Etiquetas</button>
+          </div>
+        </td>
+      </tr>`;
+    }).join("");
+  document.getElementById("sampleTable").innerHTML = rows || `<tr><td colspan="8" class="muted">No hay muestras que mostrar.</td></tr>`;
+}
+
+function selectForResults(id){
+  document.getElementById("resultSample").value=id;
+  loadResultsForm();
+  document.getElementById("resultSample").scrollIntoView({behavior:"smooth",block:"center"});
+}
+
+function advanceSelectedSample(){
+  const id=document.getElementById("resultSample").value;
+  const s=sampleById(id);
+  if(!s){ alert("Seleccione una muestra."); return; }
+  const idx=STATUS_FLOW.indexOf(s.status);
+  if(idx<0 || idx>=STATUS_FLOW.length-1){
+    alert("La muestra ya se encuentra en el estado final.");
+    return;
+  }
+  const next=STATUS_FLOW[idx+1];
+  changeSampleStatus(id,next);
+  loadResultsForm();
+}
+
+function loadResultsForm(){
+  const id=document.getElementById("resultSample").value;
+  const s=sampleById(id);
+  if(!s){ clearResultFields(); return; }
+  const rs=document.getElementById("resultStatus");
+  rs.innerHTML=statusOptions(s.status||"Registrada");
+  rs.value=s.status||"Registrada";
+  document.getElementById("rGlu").value=s.results?.glucose ?? "";
+  document.getElementById("rCt").value=s.results?.totalChol ?? "";
+  document.getElementById("rTg").value=s.results?.triglycerides ?? "";
+  document.getElementById("rHdl").value=s.results?.hdl ?? "";
+  updateLDLPreview();
+}
+
+function valOrBlank(id){
+  const v=document.getElementById(id).value;
+  return v==="" ? "" : Number(v);
+}
+
+function saveResults(){
+  const id=document.getElementById("resultSample").value;
+  const s=sampleById(id);
+  if(!s){ alert("Seleccione una muestra."); return; }
+
+  const vals={
+    glucose:valOrBlank("rGlu"),
+    totalChol:valOrBlank("rCt"),
+    triglycerides:valOrBlank("rTg"),
+    hdl:valOrBlank("rHdl"),
+    ldl:""
+  };
+
+  if(vals.totalChol!=="" && vals.triglycerides!=="" && vals.hdl!==""){
+    if(vals.triglycerides < 400){
+      vals.ldl = Number((vals.totalChol - vals.hdl - vals.triglycerides/5).toFixed(1));
+    } else {
+      vals.ldl = "No calculable";
+    }
+  }
+  if(Object.values(vals).some(v=>v!=="" && (!Number.isFinite(v) || v<0))){
+    alert("Revise los resultados ingresados.");
+    return;
+  }
+
+  s.results=vals;
+  s.resultsUpdatedAt=new Date().toISOString();
+  saveDB();
+  syncSampleToCloud(id);
+  alert(`Resultados guardados para ${id}.`);
+}
+
+function updateLDLPreview(){
+  const ct = Number(document.getElementById("rCt").value);
+  const tg = Number(document.getElementById("rTg").value);
+  const hdl = Number(document.getElementById("rHdl").value);
+  const out = document.getElementById("rLdl");
+  const note = document.getElementById("ldlNote");
+
+  if(document.getElementById("rCt").value==="" || document.getElementById("rTg").value==="" || document.getElementById("rHdl").value===""){
+    out.value="";
+    note.textContent="Friedewald: LDL = Colesterol total − HDL − (Triglicéridos/5), en mg/dL.";
+    return;
+  }
+
+  if(tg >= 400){
+    out.value="No calculable";
+    note.textContent="Friedewald no se aplica con triglicéridos ≥ 400 mg/dL.";
+    return;
+  }
+
+  const ldl = ct - hdl - tg/5;
+  out.value = ldl.toFixed(1);
+  note.textContent="Friedewald: LDL = Colesterol total − HDL − (Triglicéridos/5), en mg/dL.";
+}
+
+function clearResultFields(){
+  ["rGlu","rCt","rTg","rHdl","rLdl"].forEach(id=>document.getElementById(id).value="");
+  updateLDLPreview();
+}
+
+function showLabelsForLast(){
+  if(!lastSampleId){
+    if(db.samples.length) lastSampleId=db.samples[db.samples.length-1].id;
+    else { alert("Aún no hay muestras registradas."); return; }
+  }
+  renderLabels(lastSampleId,true);
+}
+
+function renderLabels(id, doPrint=false){
+  const s=sampleById(id), p=s?patientById(s.patientId):null;
+  if(!s||!p){ alert("No se encontró la muestra."); return; }
+  const date=new Date(s.collectedAt).toLocaleDateString("es-CL");
+  const copies=3;
+  document.getElementById("labelSheet").innerHTML = Array.from({length:copies},(_,i)=>`
+    <div class="lab-label">
+      <div><strong>Mini-LIS · ${escapeHtml(s.moment)}</strong></div>
+      <div class="sid">${escapeHtml(s.id)}</div>
+      <div>Paciente: <strong>${escapeHtml(s.patientId)}</strong></div>
+      <div>Muestra: ${escapeHtml(s.type)}</div>
+      <div>Fecha: ${escapeHtml(date)}</div>
+      <div style="margin-top:3mm;font-size:9pt">Etiqueta ${i+1}/${copies}</div>
+    </div>`).join("");
+  if(doPrint) setTimeout(()=>window.print(),80);
+}
+
+function downloadFile(name, content, type){
+  const blob=new Blob([content],{type});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download=name;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500);
+}
+
+function stamp(){
+  const d=new Date();
+  const pad=n=>String(n).padStart(2,"0");
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+
+function downloadJSON(){
+  downloadFile(`miniLIS_respaldo_${stamp()}.json`, JSON.stringify(db,null,2), "application/json");
+}
+
+function importJSON(event){
+  const file=event.target.files[0];
+  if(!file) return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    try{
+      const incoming=JSON.parse(reader.result);
+      if(!Array.isArray(incoming.patients) || !Array.isArray(incoming.samples)) throw new Error();
+      if(incoming.patients.length>1){
+        alert("Este respaldo contiene más de un paciente y no corresponde a la versión individual del estudiante.");
+        return;
+      }
+      if(!confirm("El respaldo importado reemplazará los datos locales actuales. ¿Continuar?")) return;
+      db=incoming;
+      db.nextPatient=db.nextPatient || (db.patients.length+1);
+      saveDB();
+      alert("Respaldo importado correctamente.");
+    }catch(e){ alert("El archivo no corresponde a un respaldo válido de este Mini-LIS."); }
+    event.target.value="";
+  };
+  reader.readAsText(file);
+}
+
+function csvCell(v){
+  const s=String(v??"");
+  return `"${s.replace(/"/g,'""')}"`;
+}
+
+function downloadCSV(){
+  const headers=["ID paciente","Nombre","RUT","Sección","ID muestra","Momento","Tipo muestra","Ayuno","Horas ayuno","Fecha/hora","Estado","Glucosa mg/dL","Colesterol total mg/dL","Triglicéridos mg/dL","Colesterol HDL mg/dL","Colesterol LDL calculado mg/dL","Última actualización resultados"];
+  const lines=[headers.map(csvCell).join(";")];
+  db.samples.forEach(s=>{
+    const p=patientById(s.patientId)||{};
+    const r=s.results||{};
+    lines.push([
+      s.patientId,p.name,p.rut,p.section,s.id,s.moment,s.type,s.fasting||"No informado",s.fastingHours??"",displayDate(s.collectedAt),s.status,
+      r.glucose,r.totalChol,r.triglycerides,r.hdl,r.ldl,displayDate(s.resultsUpdatedAt)
+    ].map(csvCell).join(";"));
+  });
+  downloadFile(`miniLIS_export_${stamp()}.csv`, "\uFEFF"+lines.join("\n"), "text/csv;charset=utf-8");
+}
+
+
+function getNumeric(v){
+  return (typeof v==="number" && Number.isFinite(v)) ? v : "";
+}
+function delta(post, pre){
+  return (post!=="" && pre!=="") ? Number((post-pre).toFixed(1)) : "";
+}
+function pctChange(post, pre){
+  if(post==="" || pre==="" || pre===0) return "";
+  return Number((((post-pre)/pre)*100).toFixed(1));
+}
+document.addEventListener("DOMContentLoaded",()=>{
+  document.getElementById("pRut").addEventListener("blur",e=>{
+    if(e.target.value && validRut(e.target.value)) e.target.value=formatRut(e.target.value);
+  });
+  refreshUI();
+});
+</script>
+</body>
+</html>
