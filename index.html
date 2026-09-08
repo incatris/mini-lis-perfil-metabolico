@@ -124,16 +124,7 @@
         </div>
         <div class="span-4">
           <label>Estado inicial</label>
-          <select id="sampleStatus">
-            <option selected>Registrada</option>
-            <option>Muestra obtenida</option>
-            <option>Centrifugada</option>
-            <option>Suero/plasma separado</option>
-            <option>Alicuotada</option>
-            <option>En procesamiento</option>
-            <option>Procesada</option>
-            <option>Validada</option>
-          </select>
+          <input value="Registrada" readonly>
         </div>
         <div class="span-4">
           <label>Condición de ayuno</label>
@@ -152,7 +143,7 @@
         <button onclick="createSample()">Generar muestra</button>
         <button class="secondary" onclick="showLabelsForLast()">Etiquetas última muestra</button>
       </div>
-      <p class="muted">Formato de ID de muestra: FP26-K7M2Q8RX-PRE o FP26-K7M2Q8RX-POST. Se permite una muestra PRE y una POST por paciente. Registre la matriz realmente utilizada y la condición de ayuno cuando esté disponible.</p>
+      <p class="muted">Toda muestra nueva se crea automáticamente como “Registrada”. Formato de ID: FP26-K7M2Q8RX-PRE o FP26-K7M2Q8RX-POST. Se permite una muestra PRE y una POST por paciente.</p>
     </section>
 
     <section class="card span-12">
@@ -216,7 +207,7 @@
   </div>
 
   <footer>
-    Mini-LIS estudiante v6 · seguimiento individual y sincronización Google Sheets. Los datos personales se almacenan únicamente en el navegador local donde se ejecute este archivo.
+    Mini-LIS estudiante v7 · seguimiento individual y sincronización Google Sheets. Los datos personales se almacenan únicamente en el navegador local donde se ejecute este archivo.
   </footer>
 </main>
 
@@ -235,10 +226,11 @@ function setCloudStatus(text, ok=true){
   el.className=ok ? "cloud-ok" : "cloud-warn";
 }
 
-function cloudPayloadForSample(sample){
+function cloudPayloadForSample(sample, eventType="update"){
   const p=patientById(sample.patientId) || {};
   const r=sample.results || {};
   return {
+    eventType,
     patientId: sample.patientId || "",
     name: p.name || "",
     rut: p.rut || "",
@@ -258,7 +250,7 @@ function cloudPayloadForSample(sample){
   };
 }
 
-async function syncSampleToCloud(sampleId){
+async function syncSampleToCloud(sampleId, eventType="update"){
   const s=sampleById(sampleId);
   if(!s) return false;
   setCloudStatus(`Enviando ${sampleId}…`, true);
@@ -267,7 +259,7 @@ async function syncSampleToCloud(sampleId){
       method:"POST",
       mode:"no-cors",
       headers:{"Content-Type":"text/plain;charset=utf-8"},
-      body:JSON.stringify(cloudPayloadForSample(s))
+      body:JSON.stringify(cloudPayloadForSample(s, eventType))
     });
     s.cloudSentAt=new Date().toISOString();
     localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
@@ -404,7 +396,7 @@ function createSample(){
   const patientId=document.getElementById("samplePatient").value;
   const moment=document.getElementById("sampleMoment").value;
   const type=document.getElementById("sampleType").value;
-  const status=document.getElementById("sampleStatus").value;
+  const status="Registrada";
   const fasting=document.getElementById("sampleFasting").value;
   const fastingHoursRaw=document.getElementById("sampleFastingHours").value;
   const fastingHours=fastingHoursRaw==="" ? "" : Number(fastingHoursRaw);
@@ -429,7 +421,7 @@ function createSample(){
   document.getElementById("resultSample").value=id;
   loadResultsForm();
   renderLabels(id);
-  syncSampleToCloud(id);
+  syncSampleToCloud(id, "status");
   alert(`Muestra creada: ${id}`);
 }
 
@@ -520,7 +512,7 @@ function changeSampleStatus(id, newStatus){
     document.getElementById("resultStatus").value=newStatus;
   }
 
-  syncSampleToCloud(id);
+  syncSampleToCloud(id, "status");
   renderTables();
 }
 
